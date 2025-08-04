@@ -1,0 +1,51 @@
+services:
+  app:
+    build: .
+    container_name: get_order
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - kafka
+    networks:
+      - my-network
+
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      - POSTGRES_USER=app
+      - POSTGRES_PASSWORD=app
+    container_name: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - my-network
+
+  goose:
+    build: tools/goose
+    container_name: goose
+    depends_on:
+      - postgres
+    volumes:
+      - ./migrations:/migrations
+    entrypoint: [ "/goose/entrypoint.sh" ]
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: app
+      DB_PASSWORD: app
+    networks:
+      - my-network
+
+  kafka:
+    build: kafka
+
+volumes:
+  postgres_data:
+
+networks:
+  my-network:
