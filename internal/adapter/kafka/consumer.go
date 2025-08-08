@@ -3,7 +3,6 @@ package kafka
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/folivorra/get_order/internal/config"
 	"github.com/folivorra/get_order/internal/domain"
 	"github.com/folivorra/get_order/internal/usecase"
@@ -64,7 +63,11 @@ func (c *Consumer) Start(ctx context.Context) {
 				)
 			}
 
-			fmt.Println(order)
+			js, _ := json.MarshalIndent(order, "", "  ")
+
+			c.logger.Info("incoming order",
+				slog.String("order", string(js)),
+			)
 		}
 	}
 }

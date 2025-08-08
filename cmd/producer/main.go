@@ -3,13 +3,17 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/brianvoe/gofakeit/v7"
 	"github.com/folivorra/get_order/internal/domain"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 	"log"
+	"sync"
+	"time"
 )
 
 func main() {
+	_ = gofakeit.Seed(0)
 	ctx := context.Background()
 
 	writer := kafka.Writer{
@@ -17,6 +21,7 @@ func main() {
 		Topic:        "get_orders",
 		RequiredAcks: kafka.RequireOne,
 	}
+	
 	defer func() {
 		e := writer.Close()
 		if e != nil {
@@ -24,67 +29,78 @@ func main() {
 		}
 	}()
 
+	wg := sync.WaitGroup{}
+	wg.Add(5)
 	for i := 0; i < 5; i++ {
-		order := domain.Order{
-			OrderUID:    uuid.New(),
-			TrackNumber: "WBILMTESTTRACK",
-			Entry:       "WBIL",
-			Delivery: &domain.Delivery{
-				Name:    "Test Testov",
-				Phone:   "+9720000000",
-				Zip:     "2639809",
-				City:    "Kiryat Mozkin",
-				Address: "Ploshad Mira 15",
-				Region:  "Kraiot",
-				Email:   "test@gmail.com",
-			},
-			Payment: &domain.Payment{
-				Transaction:  "b563feb7b2b84b6test",
-				RequestID:    "",
-				Currency:     "USD",
-				Provider:     "wbpay",
-				Amount:       1817,
-				PaymentDT:    1637907727,
-				Bank:         "alpha",
-				DeliveryCost: 1500,
-				GoodsTotal:   317,
-				CustomFee:    0,
-			},
-			Items: []domain.Item{
-				{
-					ChrtID:      9934930,
-					TrackNumber: "WBILMTESTTRACK",
-					Price:       453,
-					RID:         "ab4219087a764ae0btest",
-					Name:        "Mascaras",
-					Sale:        30,
-					Size:        "0",
-					TotalPrice:  317,
-					NmID:        2389212,
-					Brand:       "Vivienne Sabo",
-					Status:      202,
+		go func() {
+			defer wg.Done()
+			orderUID := uuid.New()
+			order := domain.Order{
+				OrderUID:    orderUID,
+				TrackNumber: uuid.New().String(),
+				Entry:       gofakeit.LetterN(5),
+				Delivery: &domain.Delivery{
+					DeliveryUID: uuid.New(),
+					Name:        gofakeit.Name(),
+					Phone:       gofakeit.Phone(),
+					Zip:         gofakeit.Zip(),
+					City:        gofakeit.City(),
+					Address:     gofakeit.Email(),
+					Region:      gofakeit.State(),
+					Email:       gofakeit.Email(),
 				},
-			},
-			Locale:            "en",
-			InternalSignature: "",
-			CustomerID:        "test",
-			DeliveryService:   "meest",
-			ShardKey:          "9",
-			SmID:              99,
-			DateCreated:       "2021-11-26T06:22:19Z",
-			OofShard:          "1",
-		}
+				Payment: &domain.Payment{
+					PaymentUID:   uuid.New(),
+					Transaction:  uuid.New().String(),
+					RequestID:    gofakeit.DigitN(10),
+					Currency:     gofakeit.CurrencyShort(),
+					Provider:     gofakeit.CreditCardType(),
+					Amount:       gofakeit.Number(1, 100),
+					PaymentDT:    gofakeit.Number(1, 100),
+					Bank:         gofakeit.BankType(),
+					DeliveryCost: gofakeit.Number(1, 100),
+					GoodsTotal:   gofakeit.Number(1, 100),
+					CustomFee:    gofakeit.Number(1, 100),
+				},
+				Items: []domain.Item{
+					{
+						ItemUID:     uuid.New(),
+						OrderUID:    orderUID,
+						ChrtID:      gofakeit.Number(1, 100),
+						TrackNumber: uuid.New().String(),
+						Price:       gofakeit.Number(1, 100),
+						RID:         uuid.New().String(),
+						Name:        gofakeit.ProductName(),
+						Sale:        gofakeit.Number(1, 100),
+						Size:        gofakeit.DigitN(2),
+						TotalPrice:  gofakeit.Number(1, 100),
+						NmID:        gofakeit.Number(1, 100),
+						Brand:       gofakeit.Company(),
+						Status:      gofakeit.HTTPStatusCode(),
+					},
+				},
+				Locale:            gofakeit.LanguageAbbreviation(),
+				InternalSignature: gofakeit.LetterN(5),
+				CustomerID:        uuid.New().String(),
+				DeliveryService:   gofakeit.LetterN(5),
+				ShardKey:          gofakeit.Digit(),
+				SmID:              gofakeit.Number(1, 100),
+				DateCreated:       gofakeit.PastDate().Format(time.RFC3339),
+				OofShard:          gofakeit.Digit(),
+			}
 
-		b, err := json.Marshal(order)
-		if err != nil {
-			log.Println("fail to marshal order")
-		}
+			b, err := json.Marshal(order)
+			if err != nil {
+				log.Println("fail to marshal order")
+			}
 
-		err = writer.WriteMessages(ctx, kafka.Message{
-			Value: b,
-		})
-		if err != nil {
-			log.Println("fail to write messages", err)
-		}
+			err = writer.WriteMessages(ctx, kafka.Message{
+				Value: b,
+			})
+			if err != nil {
+				log.Println("fail to write messages", err)
+			}
+		}()
 	}
+	wg.Wait()
 }
