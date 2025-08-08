@@ -8,17 +8,17 @@ import (
 )
 
 type OrderRepo interface {
-	GetByUID(uid uuid.UUID) (order domain.Order, err error)
+	Get(uid uuid.UUID) (order domain.Order, err error)
 	Save(order domain.Order) (err error)
 }
 
 type OrderService struct {
-	logger slog.Logger
-	cfg    *config.Config
+	logger *slog.Logger
+	cfg    config.Config
 	repo   OrderRepo
 }
 
-func NewOrderService(logger slog.Logger, cfg *config.Config, repo OrderRepo) *OrderService {
+func NewOrderService(logger *slog.Logger, cfg config.Config, repo OrderRepo) *OrderService {
 	return &OrderService{
 		logger: logger,
 		cfg:    cfg,
@@ -26,10 +26,6 @@ func NewOrderService(logger slog.Logger, cfg *config.Config, repo OrderRepo) *Or
 	}
 }
 
-func (s *OrderService) Get() (order domain.Order, err error) {
-	return domain.Order{}, nil
-}
-
-func (s *OrderService) Save(order domain.Order) (err error) {
-	return s.repo.Save(order)
+func (s *OrderService) ProcessIncomingOrder(order *domain.Order) error {
+	return s.repo.Save(*order)
 }

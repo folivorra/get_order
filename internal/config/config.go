@@ -3,9 +3,14 @@ package config
 import (
 	"github.com/caarlos0/env"
 	"log/slog"
+	"time"
 )
 
 type Config struct {
+	Port          string        `env:"PORT" envDefault:"8080"`
+	Timeout       time.Duration `env:"TIMEOUT" envDefault:"5s"`
+	Broker        string        `env:"BROKER" envDefault:"kafka:9092"`
+	GetOrderTopic string        `env:"GET_ORDER_TOPIC" envDefault:"get_orders"`
 }
 
 func NewConfig(logger *slog.Logger) Config {
