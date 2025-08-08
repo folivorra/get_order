@@ -2,7 +2,6 @@ package domain
 
 import (
 	"github.com/google/uuid"
-	"time"
 )
 
 type Order struct {
@@ -18,6 +17,6 @@ type Order struct {
 	DeliveryService   string    `json:"delivery_service"`
 	ShardKey          string    `json:"shardkey"`
 	SmID              int       `json:"sm_id"`
-	DateCreated       time.Time `json:"date_created"`
+	DateCreated       string    `json:"date_created"`
 	OofShard          string    `json:"oof_shard"`
 }
