@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
+	"sync"
+	"time"
+
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/folivorra/get_order/internal/domain"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
-	"log"
-	"sync"
-	"time"
 )
 
 func main() {
@@ -21,7 +22,7 @@ func main() {
 		Topic:        "get_orders",
 		RequiredAcks: kafka.RequireOne,
 	}
-	
+
 	defer func() {
 		e := writer.Close()
 		if e != nil {

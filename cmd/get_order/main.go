@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"log/slog"
+	"os"
+
 	broker "github.com/folivorra/get_order/internal/adapter/kafka"
 	"github.com/folivorra/get_order/internal/config"
 	"github.com/folivorra/get_order/internal/repository/postgres"
 	"github.com/folivorra/get_order/internal/usecase"
-	"log/slog"
-	"os"
 )
 
 func main() {

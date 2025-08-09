@@ -11,6 +11,7 @@ type Config struct {
 	Timeout       time.Duration `env:"TIMEOUT" envDefault:"5s"`
 	Broker        string        `env:"BROKER" envDefault:"kafka:9092"`
 	GetOrderTopic string        `env:"GET_ORDER_TOPIC" envDefault:"get_orders"`
+	ConsumerGroup string        `env:"CONSUMER_GROUP" envDefault:"default"`
 }
 
 func NewConfig(logger *slog.Logger) Config {

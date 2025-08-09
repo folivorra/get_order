@@ -3,11 +3,14 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+	"log/slog"
+	"time"
+
+	"github.com/brianvoe/gofakeit/v7"
 	"github.com/folivorra/get_order/internal/config"
 	"github.com/folivorra/get_order/internal/domain"
 	"github.com/folivorra/get_order/internal/usecase"
 	"github.com/segmentio/kafka-go"
-	"log/slog"
 )
 
 type Consumer struct {
@@ -30,7 +33,7 @@ func NewKafkaReader(cfg config.Config) *kafka.Reader {
 	return kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     []string{cfg.Broker},
 		Topic:       cfg.GetOrderTopic,
-		GroupID:     "mygroup",
+		GroupID:     cfg.ConsumerGroup,
 		StartOffset: kafka.LastOffset,
 	})
 }
@@ -42,11 +45,12 @@ func (c *Consumer) Start(ctx context.Context) {
 			c.Close()
 			return
 		default:
-			msg, err := c.reader.ReadMessage(ctx)
+			msg, err := c.reader.FetchMessage(ctx)
 			if err != nil {
 				c.logger.Error("failed to read message",
 					slog.String("error", err.Error()),
 				)
+				continue
 			}
 
 			var order domain.Order
@@ -57,8 +61,15 @@ func (c *Consumer) Start(ctx context.Context) {
 				)
 			}
 
-			if err = c.srv.ProcessIncomingOrder(&order); err != nil {
-				c.logger.Error("failed to process order",
+			if err = c.retryAndBackoff(&order, 5, 1*time.Second); err != nil {
+				c.logger.Warn("message is duplicated",
+					slog.String("error", err.Error()),
+				)
+				continue
+			}
+
+			if err = c.reader.CommitMessages(ctx, msg); err != nil {
+				c.logger.Error("failed to commit message",
 					slog.String("error", err.Error()),
 				)
 			}
@@ -70,6 +81,21 @@ func (c *Consumer) Start(ctx context.Context) {
 			)
 		}
 	}
+}
+
+func (c *Consumer) retryAndBackoff(order *domain.Order, retries int, backoff time.Duration) error {
+	_ = gofakeit.Seed(0)
+	var err error
+
+	for attempt := 0; attempt < retries; attempt++ {
+		if err = c.srv.ProcessIncomingOrder(order); err == nil {
+			return nil
+		}
+
+		time.Sleep(backoff + time.Duration(gofakeit.IntN(2000))*time.Millisecond)
+	}
+
+	return err
 }
 
 func (c *Consumer) Close() {
