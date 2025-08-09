@@ -44,7 +44,7 @@ CREATE TABLE orders (
 
 CREATE TABLE items (
     item_uid UUID PRIMARY KEY,
-    order_uid UUID NOT NULL REFERENCES orders(order_uid) ON DELETE SET NULL,
+    order_uid UUID REFERENCES orders(order_uid) ON DELETE SET NULL,
     chrt_id INTEGER NOT NULL,
     track_number TEXT NOT NULL,
     price INTEGER NOT NULL,

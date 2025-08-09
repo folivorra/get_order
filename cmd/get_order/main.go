@@ -33,11 +33,16 @@ func main() {
 			logger.Warn("failed to close pgClient")
 		}
 	}()
-	pgRepo := postgres.NewPgOrderRepo(pgClient)
+	pgRepo := postgres.NewPgOrderRepo(pgClient, cfg)
 
 	service := usecase.NewOrderService(ctx, logger, cfg, pgRepo)
 
 	reader := broker.NewKafkaReader(cfg)
+	defer func() {
+		if err := reader.Close(); err != nil {
+			logger.Warn("failed to close reader")
+		}
+	}()
 	consumer := broker.NewConsumer(logger, cfg, reader, service)
 
 	consumer.Start(ctx)

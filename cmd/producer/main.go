@@ -41,17 +41,15 @@ func main() {
 				TrackNumber: uuid.New().String(),
 				Entry:       gofakeit.LetterN(5),
 				Delivery: &domain.Delivery{
-					DeliveryUID: uuid.New(),
-					Name:        gofakeit.Name(),
-					Phone:       gofakeit.Phone(),
-					Zip:         gofakeit.Zip(),
-					City:        gofakeit.City(),
-					Address:     gofakeit.Email(),
-					Region:      gofakeit.State(),
-					Email:       gofakeit.Email(),
+					Name:    gofakeit.Name(),
+					Phone:   gofakeit.Phone(),
+					Zip:     gofakeit.Zip(),
+					City:    gofakeit.City(),
+					Address: gofakeit.Email(),
+					Region:  gofakeit.State(),
+					Email:   gofakeit.Email(),
 				},
 				Payment: &domain.Payment{
-					PaymentUID:   uuid.New(),
 					Transaction:  uuid.New().String(),
 					RequestID:    gofakeit.DigitN(10),
 					Currency:     gofakeit.CurrencyShort(),
@@ -65,8 +63,6 @@ func main() {
 				},
 				Items: []domain.Item{
 					{
-						ItemUID:     uuid.New(),
-						OrderUID:    orderUID,
 						ChrtID:      gofakeit.Number(1, 100),
 						TrackNumber: uuid.New().String(),
 						Price:       gofakeit.Number(1, 100),

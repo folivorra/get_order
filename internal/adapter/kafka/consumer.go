@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -47,6 +48,9 @@ func (c *Consumer) Start(ctx context.Context) {
 		default:
 			msg, err := c.reader.FetchMessage(ctx)
 			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					return
+				}
 				c.logger.Error("failed to read message",
 					slog.String("error", err.Error()),
 				)
@@ -59,9 +63,10 @@ func (c *Consumer) Start(ctx context.Context) {
 				c.logger.Error("failed to unmarshal message",
 					slog.String("error", err.Error()),
 				)
+				continue
 			}
 
-			if err = c.retryAndBackoff(&order, 5, 1*time.Second); err != nil {
+			if err = c.retryAndBackoff(ctx, &order, 5, 1*time.Second); err != nil {
 				c.logger.Warn("message is duplicated",
 					slog.String("uuid", order.OrderUID.String()),
 					slog.String("error", err.Error()),
@@ -74,20 +79,20 @@ func (c *Consumer) Start(ctx context.Context) {
 					slog.String("error", err.Error()),
 				)
 			}
-			
-			c.logger.Info("incoming order",
+
+			c.logger.Info("order has been saved in db",
 				slog.String("uuid", order.OrderUID.String()),
 			)
 		}
 	}
 }
 
-func (c *Consumer) retryAndBackoff(order *domain.Order, retries int, backoff time.Duration) error {
+func (c *Consumer) retryAndBackoff(ctx context.Context, order *domain.Order, retries int, backoff time.Duration) error {
 	_ = gofakeit.Seed(0)
 	var err error
 
 	for attempt := 0; attempt < retries; attempt++ {
-		if err = c.srv.ProcessIncomingOrder(order); err == nil {
+		if err = c.srv.ProcessIncomingOrder(ctx, order); err == nil {
 			return nil
 		}
 
