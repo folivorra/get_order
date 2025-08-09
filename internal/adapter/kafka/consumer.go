@@ -63,6 +63,7 @@ func (c *Consumer) Start(ctx context.Context) {
 
 			if err = c.retryAndBackoff(&order, 5, 1*time.Second); err != nil {
 				c.logger.Warn("message is duplicated",
+					slog.String("uuid", order.OrderUID.String()),
 					slog.String("error", err.Error()),
 				)
 				continue
@@ -73,11 +74,9 @@ func (c *Consumer) Start(ctx context.Context) {
 					slog.String("error", err.Error()),
 				)
 			}
-
-			js, _ := json.MarshalIndent(order, "", "  ")
-
+			
 			c.logger.Info("incoming order",
-				slog.String("order", string(js)),
+				slog.String("uuid", order.OrderUID.String()),
 			)
 		}
 	}

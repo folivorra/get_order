@@ -35,7 +35,7 @@ func main() {
 	}()
 	pgRepo := postgres.NewPgOrderRepo(pgClient)
 
-	service := usecase.NewOrderService(logger, cfg, pgRepo)
+	service := usecase.NewOrderService(ctx, logger, cfg, pgRepo)
 
 	reader := broker.NewKafkaReader(cfg)
 	consumer := broker.NewConsumer(logger, cfg, reader, service)
