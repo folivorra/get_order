@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/folivorra/get_order/internal/storage"
 	"log/slog"
 	"os"
 
@@ -26,9 +27,15 @@ func main() {
 
 	cfg := config.NewConfig(logger)
 
-	repo := postgres.NewPgOrderRepo()
+	pgClient := storage.NewPgClient(ctx, cfg.PgDsn)
+	defer func() {
+		if err := pgClient.Close(); err != nil {
+			logger.Warn("failed to close pgClient")
+		}
+	}()
+	pgRepo := postgres.NewPgOrderRepo(pgClient)
 
-	service := usecase.NewOrderService(logger, cfg, repo)
+	service := usecase.NewOrderService(logger, cfg, pgRepo)
 
 	reader := broker.NewKafkaReader(cfg)
 	consumer := broker.NewConsumer(logger, cfg, reader, service)

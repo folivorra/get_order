@@ -12,6 +12,7 @@ type Config struct {
 	Broker        string        `env:"BROKER" envDefault:"kafka:9092"`
 	GetOrderTopic string        `env:"GET_ORDER_TOPIC" envDefault:"get_orders"`
 	ConsumerGroup string        `env:"CONSUMER_GROUP" envDefault:"default"`
+	PgDsn         string        `env:"PG_DSN" envDefault:"postgres://app:app@postgres:5432/?sslmode=disable"`
 }
 
 func NewConfig(logger *slog.Logger) Config {
