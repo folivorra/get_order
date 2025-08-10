@@ -44,24 +44,32 @@ CREATE TABLE orders (
 
 CREATE TABLE items (
     item_uid UUID PRIMARY KEY,
-    order_uid UUID REFERENCES orders(order_uid) ON DELETE SET NULL,
     chrt_id INTEGER NOT NULL,
     track_number TEXT NOT NULL,
-    price INTEGER NOT NULL,
     rid TEXT NOT NULL,
     name TEXT NOT NULL,
-    sale INTEGER NOT NULL,
-    size TEXT NOT NULL,
-    total_price INTEGER NOT NULL,
-    nm_id INTEGER NOT NULL,
     brand TEXT NOT NULL,
+    size TEXT NOT NULL,
+    nm_id INTEGER NOT NULL,
     status INTEGER NOT NULL
+);
+
+CREATE TABLE order_items (
+    order_item_uid UUID PRIMARY KEY,
+    order_uid UUID NOT NULL REFERENCES orders(order_uid) ON DELETE CASCADE,
+    item_uid UUID NOT NULL REFERENCES items(item_uid) ON DELETE CASCADE,
+    price INTEGER NOT NULL,
+    sale INTEGER NOT NULL,
+    total_price INTEGER NOT NULL,
+    quantity INTEGER NOT NULL DEFAULT 1
 );
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
+
+DROP TABLE "order_items";
 
 DROP TABLE "items";
 

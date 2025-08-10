@@ -51,3 +51,7 @@ func (s *OrderService) ProcessIncomingOrder(ctx context.Context, order *domain.O
 
 	return s.repo.Save(ctx, order)
 }
+
+func (s *OrderService) ShowOrder(ctx context.Context) {
+
+}
