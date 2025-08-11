@@ -15,19 +15,24 @@ type OrderRepo interface {
 	Exists(ctx context.Context, uuid uuid.UUID) (exists bool, err error)
 }
 
+type OrderCache interface {
+	Get(ctx context.Context, uid uuid.UUID) (order *domain.Order, err error)
+	Set(ctx context.Context, order *domain.Order) (err error)
+}
+
 type OrderService struct {
-	ctx    context.Context
 	logger *slog.Logger
 	cfg    config.Config
 	repo   OrderRepo
+	//cache  OrderCache
 }
 
-func NewOrderService(ctx context.Context, logger *slog.Logger, cfg config.Config, repo OrderRepo) *OrderService {
+func NewOrderService(logger *slog.Logger, cfg config.Config, repo OrderRepo) *OrderService {
 	return &OrderService{
-		ctx:    ctx,
 		logger: logger,
 		cfg:    cfg,
 		repo:   repo,
+		//cache:  cache,
 	}
 }
 
@@ -45,13 +50,24 @@ func (s *OrderService) ProcessIncomingOrder(ctx context.Context, order *domain.O
 	order.Delivery.DeliveryUID = uuid.New()
 	order.Payment.PaymentUID = uuid.New()
 	for i := range order.Items {
-		order.Items[i].ItemUID = uuid.New()
-		order.Items[i].OrderUID = order.OrderUID
+		order.Items[i].OrderItemUID = uuid.New()
 	}
 
 	return s.repo.Save(ctx, order)
 }
 
-func (s *OrderService) ShowOrder(ctx context.Context) {
+func (s *OrderService) GetOrder(ctx context.Context, uuid uuid.UUID) (*domain.Order, error) {
+	//order, err := s.cache.Get(ctx, uuid)
+	//if err == nil {
+	//	return order, nil
+	//}
 
+	order, err := s.repo.Get(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+
+	//err = s.cache.Set(ctx, order) // todo mb ignore err
+
+	return order, err
 }

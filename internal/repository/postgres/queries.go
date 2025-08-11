@@ -40,4 +40,13 @@ const (
 		$1, $2, $3, $4, $5, $6, $7
 	);
 	`
+	orderGetQuery = `
+	SELECT *
+	FROM orders o
+	JOIN deliveries d ON d.delivery_uid = o.delivery_uid
+	JOIN payments p ON p.payment_uid = o.payment_uid
+	JOIN order_item oi ON oi.order_uid = o.order_uid
+	JOIN items i ON oi.item_uid = i.item_uid
+	WHERE o.order_uid = $1;
+	`
 )

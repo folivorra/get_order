@@ -23,11 +23,95 @@ func NewPgOrderRepo(db *sql.DB, cfg config.Config) *PgOrderRepo {
 	}
 }
 
-func (pg *PgOrderRepo) Get(ctx context.Context, uid uuid.UUID) (order *domain.Order, err error) {
-	return nil, nil
+func (pg *PgOrderRepo) Get(ctx context.Context, uid uuid.UUID) (*domain.Order, error) {
+	ctx, cancel := context.WithTimeout(ctx, pg.cfg.GetTimeout)
+	defer cancel()
+
+	order := domain.Order{
+		Delivery: &domain.Delivery{},
+		Payment:  &domain.Payment{},
+	}
+
+	r, err := pg.db.QueryContext(ctx, orderGetQuery, uid)
+	if err != nil {
+		return nil, err
+	}
+	defer func(r *sql.Rows) {
+		err = r.Close()
+		if err != nil {
+			return
+		}
+	}(r)
+
+	for r.Next() {
+		item := domain.OrderItem{
+			Item: &domain.Item{},
+		}
+
+		if err = r.Scan(
+			&order.OrderUID,
+			&order.TrackNumber,
+			&order.Entry,
+			&order.Delivery.DeliveryUID,
+			&order.Payment.PaymentUID,
+			&order.Locale,
+			&order.InternalSignature,
+			&order.CustomerID,
+			&order.DeliveryService,
+			&order.ShardKey,
+			&order.SmID,
+			&order.DateCreated,
+			&order.OofShard,
+
+			&order.Delivery.DeliveryUID,
+			&order.Delivery.Name,
+			&order.Delivery.Phone,
+			&order.Delivery.Zip,
+			&order.Delivery.City,
+			&order.Delivery.Address,
+			&order.Delivery.Region,
+			&order.Delivery.Email,
+
+			&order.Payment.PaymentUID,
+			&order.Payment.Transaction,
+			&order.Payment.RequestID,
+			&order.Payment.Currency,
+			&order.Payment.Provider,
+			&order.Payment.Amount,
+			&order.Payment.PaymentDT,
+			&order.Payment.Bank,
+			&order.Payment.DeliveryCost,
+			&order.Payment.GoodsTotal,
+			&order.Payment.CustomFee,
+
+			&item.OrderItemUID,
+			&item.OrderUID,
+			&item.ItemUID,
+			&item.Price,
+			&item.Sale,
+			&item.TotalPrice,
+			&item.Quantity,
+
+			&item.Item.ItemUID,
+			&item.Item.ChrtID,
+			&item.Item.TrackNumber,
+			&item.Item.RID,
+			&item.Item.Name,
+			&item.Item.Size,
+			&item.Item.NmID,
+			&item.Item.Brand,
+			&item.Item.Status,
+		); err != nil {
+			return nil, err
+		}
+
+		order.Items = append(order.Items, &item)
+	}
+
+	return &order, r.Err()
 }
 
-func (pg *PgOrderRepo) Save(ctx context.Context, order *domain.Order) (err error) {
+func (pg *PgOrderRepo) Save(ctx context.Context, order *domain.Order) error {
 	ctx, cancel := context.WithTimeout(ctx, pg.cfg.SaveTimeout)
 	defer cancel()
 

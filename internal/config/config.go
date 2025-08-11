@@ -15,6 +15,7 @@ type Config struct {
 	PgDsn         string        `env:"PG_DSN" envDefault:"postgres://app:app@postgres:5432/?sslmode=disable"`
 	SaveTimeout   time.Duration `env:"SAVE_TIMEOUT" envDefault:"5s"`
 	ExistsTimeout time.Duration `env:"EXISTS_TIMEOUT" envDefault:"2s"`
+	GetTimeout    time.Duration `env:"GET_TIMEOUT" envDefault:"2s"`
 }
 
 func NewConfig(logger *slog.Logger) Config {
