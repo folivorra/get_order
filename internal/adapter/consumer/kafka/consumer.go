@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/folivorra/get_order/internal/adapter/mapper"
 	"log/slog"
 	"time"
 
@@ -30,7 +31,7 @@ func NewConsumer(logger *slog.Logger, cfg config.Config, reader *kafka.Reader, s
 	}
 }
 
-func NewKafkaReader(cfg config.Config) *kafka.Reader {
+func NewReader(cfg config.Config) *kafka.Reader {
 	return kafka.NewReader(kafka.ReaderConfig{
 		Brokers:     []string{cfg.Broker},
 		Topic:       cfg.GetOrderTopic,
@@ -57,16 +58,18 @@ func (c *Consumer) Start(ctx context.Context) {
 				continue
 			}
 
-			var order domain.Order
+			var orderDTO mapper.OrderIntoDomainDTO
 
-			if err = json.Unmarshal(msg.Value, &order); err != nil {
+			if err = json.Unmarshal(msg.Value, &orderDTO); err != nil {
 				c.logger.Error("failed to unmarshal message",
 					slog.String("error", err.Error()),
 				)
 				continue
 			}
 
-			if err = c.retryAndBackoff(ctx, &order, 5, 1*time.Second); err != nil {
+			order := orderDTO.ConvertToDomain()
+
+			if err = c.retryAndBackoff(ctx, order, 5, 1*time.Second); err != nil {
 				c.logger.Warn("message is duplicated",
 					slog.String("uuid", order.OrderUID.String()),
 					slog.String("error", err.Error()),

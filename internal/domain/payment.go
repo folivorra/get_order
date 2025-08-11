@@ -3,15 +3,15 @@ package domain
 import "github.com/google/uuid"
 
 type Payment struct {
-	PaymentUID   uuid.UUID `json:"payment_uid"`
-	Transaction  string    `json:"transaction"`
-	RequestID    string    `json:"request_id"`
-	Currency     string    `json:"currency"`
-	Provider     string    `json:"provider"`
-	Amount       int       `json:"amount"`
-	PaymentDT    int       `json:"payment_dt"`
-	Bank         string    `json:"bank"`
-	DeliveryCost int       `json:"delivery_cost"`
-	GoodsTotal   int       `json:"goods_total"`
-	CustomFee    int       `json:"custom_fee"`
+	PaymentUID   uuid.UUID
+	Transaction  string
+	RequestID    string
+	Currency     string
+	Provider     string
+	Amount       int
+	PaymentDT    int
+	Bank         string
+	DeliveryCost int
+	GoodsTotal   int
+	CustomFee    int
 }

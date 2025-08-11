@@ -92,18 +92,28 @@ func (pg *PgOrderRepo) Save(ctx context.Context, order *domain.Order) (err error
 	for _, item := range order.Items {
 		_, err = tx.ExecContext(ctx, itemSaveQuery,
 			item.ItemUID,
+			item.Item.ChrtID,
+			item.Item.TrackNumber,
+			item.Item.RID,
+			item.Item.Name,
+			item.Item.Size,
+			item.Item.NmID,
+			item.Item.Brand,
+			item.Item.Status,
+		)
+		if err != nil {
+			_ = tx.Rollback()
+			return err
+		}
+
+		_, err = tx.ExecContext(ctx, itemOrderSaveQuery,
+			item.OrderItemUID,
 			item.OrderUID,
-			item.ChrtID,
-			item.TrackNumber,
+			item.ItemUID,
 			item.Price,
-			item.RID,
-			item.Name,
 			item.Sale,
-			item.Size,
 			item.TotalPrice,
-			item.NmID,
-			item.Brand,
-			item.Status,
+			item.Quantity,
 		)
 		if err != nil {
 			_ = tx.Rollback()

@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/folivorra/get_order/internal/adapter/mapper"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/brianvoe/gofakeit/v7"
-	"github.com/folivorra/get_order/internal/domain"
 	"github.com/google/uuid"
 	"github.com/segmentio/kafka-go"
 )
@@ -35,12 +35,11 @@ func main() {
 	for i := 0; i < 5; i++ {
 		go func() {
 			defer wg.Done()
-			orderUID := uuid.New()
-			order := domain.Order{
-				OrderUID:    orderUID,
+			order := mapper.OrderIntoDomainDTO{
+				OrderUID:    uuid.New(),
 				TrackNumber: uuid.New().String(),
 				Entry:       gofakeit.LetterN(5),
-				Delivery: &domain.Delivery{
+				Delivery: mapper.DeliveryIntoDomainDTO{
 					Name:    gofakeit.Name(),
 					Phone:   gofakeit.Phone(),
 					Zip:     gofakeit.Zip(),
@@ -49,7 +48,7 @@ func main() {
 					Region:  gofakeit.State(),
 					Email:   gofakeit.Email(),
 				},
-				Payment: &domain.Payment{
+				Payment: mapper.PaymentIntoDomainDTO{
 					Transaction:  uuid.New().String(),
 					RequestID:    gofakeit.DigitN(10),
 					Currency:     gofakeit.CurrencyShort(),
@@ -61,12 +60,13 @@ func main() {
 					GoodsTotal:   gofakeit.Number(1, 100),
 					CustomFee:    gofakeit.Number(1, 100),
 				},
-				Items: []domain.Item{
+				Items: []mapper.ItemIntoDomainDTO{
 					{
+						ItemUID:     uuid.New(),
 						ChrtID:      gofakeit.Number(1, 100),
 						TrackNumber: uuid.New().String(),
 						Price:       gofakeit.Number(1, 100),
-						RID:         uuid.New().String(),
+						Rid:         uuid.New().String(),
 						Name:        gofakeit.ProductName(),
 						Sale:        gofakeit.Number(1, 100),
 						Size:        gofakeit.DigitN(2),
@@ -74,13 +74,14 @@ func main() {
 						NmID:        gofakeit.Number(1, 100),
 						Brand:       gofakeit.Company(),
 						Status:      gofakeit.HTTPStatusCode(),
+						Quantity:    gofakeit.Number(1, 4),
 					},
 				},
 				Locale:            gofakeit.LanguageAbbreviation(),
 				InternalSignature: gofakeit.LetterN(5),
 				CustomerID:        uuid.New().String(),
 				DeliveryService:   gofakeit.LetterN(5),
-				ShardKey:          gofakeit.Digit(),
+				Shardkey:          gofakeit.Digit(),
 				SmID:              gofakeit.Number(1, 100),
 				DateCreated:       gofakeit.PastDate().Format(time.RFC3339),
 				OofShard:          gofakeit.Digit(),

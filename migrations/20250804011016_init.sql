@@ -54,7 +54,7 @@ CREATE TABLE items (
     status INTEGER NOT NULL
 );
 
-CREATE TABLE order_items (
+CREATE TABLE order_item (
     order_item_uid UUID PRIMARY KEY,
     order_uid UUID NOT NULL REFERENCES orders(order_uid) ON DELETE CASCADE,
     item_uid UUID NOT NULL REFERENCES items(item_uid) ON DELETE CASCADE,
@@ -69,7 +69,7 @@ CREATE TABLE order_items (
 -- +goose Down
 -- +goose StatementBegin
 
-DROP TABLE "order_items";
+DROP TABLE "order_item";
 
 DROP TABLE "items";
 

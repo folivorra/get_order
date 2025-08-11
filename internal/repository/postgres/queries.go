@@ -27,9 +27,17 @@ const (
 	`
 	itemSaveQuery = `
 	INSERT INTO items (
-	    item_uid, order_uid, chrt_id, track_number, price, rid, name, sale, size, total_price, nm_id, brand, status
+	    item_uid, chrt_id, track_number, rid, name, size, nm_id, brand, status
 	) VALUES (
-	    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+	    $1, $2, $3, $4, $5, $6, $7, $8, $9
+	)
+	ON CONFLICT (item_uid) DO NOTHING;
+	`
+	itemOrderSaveQuery = `
+	INSERT INTO order_item (
+	    order_item_uid, order_uid, item_uid, price, sale, total_price, quantity
+	) VALUES (
+		$1, $2, $3, $4, $5, $6, $7
 	);
 	`
 )
