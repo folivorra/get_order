@@ -80,7 +80,7 @@ func (c *Consumer) Start(ctx context.Context) {
 				err = c.srv.ProcessIncomingOrder(ctx, order)
 
 				switch {
-				case errors.Is(err, usecase.OrderAlreadyExists):
+				case errors.Is(err, usecase.ErrOrderAlreadyExists):
 					commit = true
 					c.logger.Warn("order already exists",
 						slog.String("uuid", order.OrderUID.String()),

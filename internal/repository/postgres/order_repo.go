@@ -13,7 +13,7 @@ import (
 )
 
 var (
-	MaxRetryAttemptsExceeded = errors.New("max retry attempts exceeded")
+	ErrMaxRetryAttemptsExceeded = errors.New("max retry attempts exceeded")
 )
 
 type PgOrderRepo struct {
@@ -258,5 +258,5 @@ func retry(ctx context.Context, maxRetries int, backoff time.Duration, fn func()
 		}
 	}
 
-	return MaxRetryAttemptsExceeded
+	return ErrMaxRetryAttemptsExceeded
 }

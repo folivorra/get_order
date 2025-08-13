@@ -38,7 +38,7 @@ func (c *Controller) GetOrderToUI(w http.ResponseWriter, r *http.Request) {
 
 	order, err := c.service.GetOrder(r.Context(), uid)
 	if err != nil {
-		if errors.Is(err, usecase.OrderDoesNotExists) {
+		if errors.Is(err, usecase.ErrOrderDoesNotExists) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)

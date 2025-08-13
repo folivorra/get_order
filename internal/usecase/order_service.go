@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	OrderAlreadyExists = errors.New("order already exists")
-	OrderDoesNotExists = errors.New("order does not exists")
+	ErrOrderAlreadyExists = errors.New("order already exists")
+	ErrOrderDoesNotExists = errors.New("order does not exists")
 )
 
 type OrderRepo interface {
@@ -48,7 +48,7 @@ func (s *OrderService) ProcessIncomingOrder(ctx context.Context, order *domain.O
 	}
 
 	if exists {
-		return OrderAlreadyExists
+		return ErrOrderAlreadyExists
 	}
 
 	// need to give uuid for objects before save in repo
@@ -72,7 +72,7 @@ func (s *OrderService) GetOrder(ctx context.Context, uuid uuid.UUID) (*domain.Or
 		return nil, err
 	}
 	if !exists {
-		return nil, OrderDoesNotExists
+		return nil, ErrOrderDoesNotExists
 	}
 
 	order, err := s.repo.Get(ctx, uuid)
