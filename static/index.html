@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Поиск заказа по UID</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+        input, button {
+            padding: 8px;
+            font-size: 16px;
+        }
+        button {
+            margin-left: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f8f8;
+            text-align: left;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<h1>Поиск заказа</h1>
+<input id="uid" type="text" placeholder="Введите UID заказа" size="40">
+<button onclick="getOrder()">Найти</button>
+
+<h2>Результат:</h2>
+<div id="result"></div>
+
+<script>
+    async function getOrder() {
+        const uid = document.getElementById('uid').value.trim();
+        const resultDiv = document.getElementById('result');
+        resultDiv.innerHTML = "";
+
+        if (!uid) {
+            resultDiv.innerHTML = "<p class='error'>Введите UID</p>";
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/order?uid=${encodeURIComponent(uid)}`);
+            if (!response.ok) {
+                throw new Error(`Ошибка ${response.status}`);
+            }
+            const data = await response.json();
+
+            // Строим таблицу
+            let html = "<table><tbody>";
+            for (let key in data) {
+                html += `<tr><th>${key}</th><td>${data[key]}</td></tr>`;
+            }
+            html += "</tbody></table>";
+
+            resultDiv.innerHTML = html;
+        } catch (err) {
+            resultDiv.innerHTML = `<p class='error'>${err.message}</p>`;
+        }
+    }
+</script>
+</body>
+</html>

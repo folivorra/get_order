@@ -9,6 +9,11 @@ import (
 	"log/slog"
 )
 
+var (
+	OrderAlreadyExists = errors.New("order already exists")
+	OrderDoesNotExists = errors.New("order does not exists")
+)
+
 type OrderRepo interface {
 	Get(ctx context.Context, uid uuid.UUID) (order *domain.Order, err error)
 	Save(ctx context.Context, order *domain.Order) (err error)
@@ -43,7 +48,7 @@ func (s *OrderService) ProcessIncomingOrder(ctx context.Context, order *domain.O
 	}
 
 	if exists {
-		return errors.New("order already exists")
+		return OrderAlreadyExists
 	}
 
 	// need to give uuid for objects before save in repo
@@ -61,6 +66,14 @@ func (s *OrderService) GetOrder(ctx context.Context, uuid uuid.UUID) (*domain.Or
 	//if err == nil {
 	//	return order, nil
 	//}
+
+	exists, err := s.repo.Exists(ctx, uuid)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, OrderDoesNotExists
+	}
 
 	order, err := s.repo.Get(ctx, uuid)
 	if err != nil {

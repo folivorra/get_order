@@ -8,9 +8,9 @@ type Order struct {
 	OrderUID          uuid.UUID
 	TrackNumber       string
 	Entry             string
-	Delivery          *Delivery
-	Payment           *Payment
-	Items             []*OrderItem
+	Delivery          Delivery
+	Payment           Payment
+	Items             []OrderItem
 	Locale            string
 	InternalSignature string
 	CustomerID        string

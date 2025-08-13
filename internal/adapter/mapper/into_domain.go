@@ -61,10 +61,10 @@ type OrderIntoDomainDTO struct {
 	OofShard          string                `json:"oof_shard"`
 }
 
-func (dto *OrderIntoDomainDTO) ConvertToDomain() *domain.Order {
-	items := make([]*domain.OrderItem, len(dto.Items))
+func ConvertToDomain(dto *OrderIntoDomainDTO) *domain.Order {
+	items := make([]domain.OrderItem, len(dto.Items))
 	for i, itemDTO := range dto.Items {
-		items[i] = &domain.OrderItem{
+		items[i] = domain.OrderItem{
 			OrderUID:   dto.OrderUID,
 			ItemUID:    itemDTO.ItemUID,
 			Price:      itemDTO.Price,
@@ -89,7 +89,7 @@ func (dto *OrderIntoDomainDTO) ConvertToDomain() *domain.Order {
 		OrderUID:    dto.OrderUID,
 		TrackNumber: dto.TrackNumber,
 		Entry:       dto.Entry,
-		Delivery: &domain.Delivery{
+		Delivery: domain.Delivery{
 			Name:    dto.Delivery.Name,
 			Phone:   dto.Delivery.Phone,
 			Zip:     dto.Delivery.Zip,
@@ -98,7 +98,7 @@ func (dto *OrderIntoDomainDTO) ConvertToDomain() *domain.Order {
 			Region:  dto.Delivery.Region,
 			Email:   dto.Delivery.Email,
 		},
-		Payment: &domain.Payment{
+		Payment: domain.Payment{
 			Transaction:  dto.Payment.Transaction,
 			RequestID:    dto.Payment.RequestID,
 			Currency:     dto.Payment.Currency,

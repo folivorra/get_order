@@ -2,20 +2,30 @@ package main
 
 import (
 	"context"
-	"github.com/folivorra/get_order/internal/storage"
+	"github.com/brianvoe/gofakeit/v7"
 	"log/slog"
+	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
-	broker "github.com/folivorra/get_order/internal/adapter/kafka"
+	"github.com/folivorra/get_order/internal/adapter/consumer/kafka"
+	"github.com/folivorra/get_order/internal/adapter/controller/rest"
+	"github.com/folivorra/get_order/internal/adapter/middleware"
 	"github.com/folivorra/get_order/internal/config"
 	"github.com/folivorra/get_order/internal/repository/postgres"
+	"github.com/folivorra/get_order/internal/storage"
 	"github.com/folivorra/get_order/internal/usecase"
+	"github.com/gorilla/mux"
 )
 
 func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	_ = gofakeit.Seed(0)
+
+	// logger
 	logger := slog.New(
 		slog.NewTextHandler(
 			os.Stdout, &slog.HandlerOptions{
@@ -25,9 +35,11 @@ func main() {
 		),
 	)
 
+	// cfg
 	cfg := config.NewConfig(logger)
 
-	pgClient := storage.NewPgClient(ctx, cfg.PgDsn)
+	// postgres | repo
+	pgClient := storage.NewPgClient(ctx, cfg)
 	defer func() {
 		if err := pgClient.Close(); err != nil {
 			logger.Warn("failed to close pgClient")
@@ -35,15 +47,47 @@ func main() {
 	}()
 	pgRepo := postgres.NewPgOrderRepo(pgClient, cfg)
 
-	service := usecase.NewOrderService(ctx, logger, cfg, pgRepo)
+	// service layer
+	service := usecase.NewOrderService(logger, cfg, pgRepo)
 
-	reader := broker.NewKafkaReader(cfg)
-	defer func() {
-		if err := reader.Close(); err != nil {
-			logger.Warn("failed to close reader")
+	// kafka
+	kafkaReader := kafka.NewReader(cfg)
+	kafkaConsumer := kafka.NewConsumer(logger, cfg, kafkaReader, service)
+	go kafkaConsumer.Start(ctx)
+
+	// router mux
+	router := mux.NewRouter()
+	router.Use(middleware.LoggingMiddleware(logger))
+
+	// http | controller
+	controller := rest.NewController(service, cfg, logger)
+	controller.RegisterRoutes(router)
+
+	// http | server
+	server := rest.NewServer(
+		&http.Server{
+			Addr:              ":" + cfg.ServerHTTPPort,
+			Handler:           router,
+			ReadHeaderTimeout: cfg.ServerHTTPReadHeaderTimeout,
+			ReadTimeout:       cfg.ServerHTTPReadTimeout,
+			WriteTimeout:      cfg.ServerHTTPWriteTimeout,
+			IdleTimeout:       cfg.ServerHTTPIdleTimeout,
+		},
+		cfg,
+		logger,
+	)
+
+	go func() {
+		if err := server.Run(); err != nil {
+			logger.Error("failed to start server",
+				slog.String("addr", cfg.ServerHTTPPort),
+				slog.String("err", err.Error()),
+			)
 		}
 	}()
-	consumer := broker.NewConsumer(logger, cfg, reader, service)
+	defer server.Stop(ctx)
 
-	consumer.Start(ctx)
+	shutdown := make(chan os.Signal, 1)
+	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
+	<-shutdown
 }

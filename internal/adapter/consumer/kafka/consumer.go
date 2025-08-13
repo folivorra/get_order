@@ -4,15 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/folivorra/get_order/internal/adapter/mapper"
-	"log/slog"
-	"time"
-
 	"github.com/brianvoe/gofakeit/v7"
+	"github.com/folivorra/get_order/internal/adapter/mapper"
 	"github.com/folivorra/get_order/internal/config"
-	"github.com/folivorra/get_order/internal/domain"
 	"github.com/folivorra/get_order/internal/usecase"
 	"github.com/segmentio/kafka-go"
+	"log/slog"
+	"time"
 )
 
 type Consumer struct {
@@ -33,76 +31,91 @@ func NewConsumer(logger *slog.Logger, cfg config.Config, reader *kafka.Reader, s
 
 func NewReader(cfg config.Config) *kafka.Reader {
 	return kafka.NewReader(kafka.ReaderConfig{
-		Brokers:     []string{cfg.Broker},
-		Topic:       cfg.GetOrderTopic,
-		GroupID:     cfg.ConsumerGroup,
+		Brokers:     []string{cfg.KafkaBrokerAddr},
+		Topic:       cfg.KafkaGetOrderTopic,
+		GroupID:     cfg.KafkaConsumerGroup,
 		StartOffset: kafka.LastOffset,
 	})
 }
 
 func (c *Consumer) Start(ctx context.Context) {
+	c.logger.Info("consumer started",
+		slog.String("addr", c.cfg.KafkaBrokerAddr),
+	)
+
 	for {
 		select {
 		case <-ctx.Done():
 			c.Close()
+			c.logger.Info("consumer stopped",
+				slog.String("addr", c.cfg.KafkaBrokerAddr),
+			)
 			return
 		default:
 			msg, err := c.reader.FetchMessage(ctx)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
+					c.Close()
+					c.logger.Info("consumer stopped",
+						slog.String("addr", c.cfg.KafkaBrokerAddr),
+					)
 					return
 				}
-				c.logger.Error("failed to read message",
+				c.logger.Error("failed to read message, retrying",
 					slog.String("error", err.Error()),
 				)
 				continue
 			}
 
 			var orderDTO mapper.OrderIntoDomainDTO
+			commit := false
 
 			if err = json.Unmarshal(msg.Value, &orderDTO); err != nil {
+				commit = true
 				c.logger.Error("failed to unmarshal message",
 					slog.String("error", err.Error()),
 				)
-				continue
+			} else {
+				order := mapper.ConvertToDomain(&orderDTO)
+				err = c.srv.ProcessIncomingOrder(ctx, order)
+
+				switch {
+				case errors.Is(err, usecase.OrderAlreadyExists):
+					commit = true
+					c.logger.Warn("order already exists",
+						slog.String("uuid", order.OrderUID.String()),
+					)
+				case err != nil:
+					c.logger.Error("failed to process order, retrying",
+						slog.String("uuid", order.OrderUID.String()),
+						slog.String("error", err.Error()),
+					)
+
+					jitter := time.Duration(gofakeit.IntN(500)) * time.Millisecond
+
+					time.Sleep(c.cfg.KafkaBackoff + jitter)
+				default:
+					commit = true
+					c.logger.Info("order has been saved in db",
+						slog.String("uuid", order.OrderUID.String()),
+					)
+
+					orderView, _ := json.MarshalIndent(orderDTO, "", "	")
+					c.logger.Debug("saved order view",
+						slog.String("order", string(orderView)),
+					)
+				}
 			}
 
-			order := orderDTO.ConvertToDomain()
-
-			if err = c.retryAndBackoff(ctx, order, 5, 1*time.Second); err != nil {
-				c.logger.Warn("message is duplicated",
-					slog.String("uuid", order.OrderUID.String()),
-					slog.String("error", err.Error()),
-				)
-				continue
+			if commit {
+				if err = c.reader.CommitMessages(ctx, msg); err != nil {
+					c.logger.Error("failed to commit message",
+						slog.String("error", err.Error()),
+					)
+				}
 			}
-
-			if err = c.reader.CommitMessages(ctx, msg); err != nil {
-				c.logger.Error("failed to commit message",
-					slog.String("error", err.Error()),
-				)
-			}
-
-			c.logger.Info("order has been saved in db",
-				slog.String("uuid", order.OrderUID.String()),
-			)
 		}
 	}
-}
-
-func (c *Consumer) retryAndBackoff(ctx context.Context, order *domain.Order, retries int, backoff time.Duration) error {
-	_ = gofakeit.Seed(0)
-	var err error
-
-	for attempt := 0; attempt < retries; attempt++ {
-		if err = c.srv.ProcessIncomingOrder(ctx, order); err == nil {
-			return nil
-		}
-
-		time.Sleep(backoff + time.Duration(gofakeit.IntN(2000))*time.Millisecond)
-	}
-
-	return err
 }
 
 func (c *Consumer) Close() {
@@ -110,5 +123,7 @@ func (c *Consumer) Close() {
 		c.logger.Warn("failed to close kafka reader",
 			slog.String("error", err.Error()),
 		)
+	} else {
+		c.logger.Info("kafka reader has been closed")
 	}
 }

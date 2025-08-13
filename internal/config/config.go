@@ -1,21 +1,33 @@
 package config
 
 import (
+	"encoding/json"
 	"github.com/caarlos0/env"
 	"log/slog"
 	"time"
 )
 
 type Config struct {
-	Port          string        `env:"PORT" envDefault:"8080"`
-	ServerTimeout time.Duration `env:"SERVER_TIMEOUT" envDefault:"5s"`
-	Broker        string        `env:"BROKER" envDefault:"kafka:9092"`
-	GetOrderTopic string        `env:"GET_ORDER_TOPIC" envDefault:"get_orders"`
-	ConsumerGroup string        `env:"CONSUMER_GROUP" envDefault:"default"`
-	PgDsn         string        `env:"PG_DSN" envDefault:"postgres://app:app@postgres:5432/?sslmode=disable"`
-	SaveTimeout   time.Duration `env:"SAVE_TIMEOUT" envDefault:"5s"`
-	ExistsTimeout time.Duration `env:"EXISTS_TIMEOUT" envDefault:"2s"`
-	GetTimeout    time.Duration `env:"GET_TIMEOUT" envDefault:"2s"`
+	KafkaBrokerAddr             string        `env:"KAFKA_BROKER" envDefault:"kafka:9092"`
+	KafkaGetOrderTopic          string        `env:"KAFKA_GET_ORDER_TOPIC" envDefault:"get_orders"`
+	KafkaConsumerGroup          string        `env:"KAFKA_CONSUMER_GROUP" envDefault:"default"`
+	KafkaBackoff                time.Duration `env:"KAFKA_BACKOFF" envDefault:"500ms"`
+	PgDsn                       string        `env:"PG_DSN" envDefault:"postgres://app:app@postgres:5432/?sslmode=disable"`
+	PgSaveTimeout               time.Duration `env:"PG_SAVE_TIMEOUT" envDefault:"5s"`
+	PgExistsTimeout             time.Duration `env:"PG_EXISTS_TIMEOUT" envDefault:"2s"`
+	PgGetTimeout                time.Duration `env:"PG_GET_TIMEOUT" envDefault:"2s"`
+	PgPoolMaxOpenConns          int           `env:"PG_POOL_MAX_OPEN_CONNS" envDefault:"10"`
+	PgPoolMaxIdleConns          int           `env:"PG_POOL_MAX_IDLE_CONNS" envDefault:"5"`
+	PgPoolConnMaxLifetime       time.Duration `env:"PG_POOL_CONN_MAX_LIFETIME" envDefault:"1h"`
+	PgPingTimeout               time.Duration `env:"PG_PING_TIMEOUT" envDefault:"500ms"`
+	PgMaxRetries                int           `env:"PG_MAX_RETRIES" envDefault:"3"`
+	PgBackoff                   time.Duration `env:"PG_BACKOFF" envDefault:"500ms"`
+	ServerHTTPPort              string        `env:"SERVER_HTTP_PORT" envDefault:"8080"`
+	ServerHTTPShutdownTimeout   time.Duration `env:"SERVER_HTTP_SHUTDOWN_TIMEOUT" envDefault:"5s"`
+	ServerHTTPReadHeaderTimeout time.Duration `env:"SERVER_HTTP_READ_HEADER_TIMEOUT" envDefault:"5s"`
+	ServerHTTPReadTimeout       time.Duration `env:"SERVER_HTTP_READ_TIMEOUT" envDefault:"5s"`
+	ServerHTTPWriteTimeout      time.Duration `env:"SERVER_HTTP_WRITE_TIMEOUT" envDefault:"10s"`
+	ServerHTTPIdleTimeout       time.Duration `env:"SERVER_HTTP_IDLE_TIMEOUT" envDefault:"120s"`
 }
 
 func NewConfig(logger *slog.Logger) Config {
@@ -25,6 +37,11 @@ func NewConfig(logger *slog.Logger) Config {
 			slog.String("error", err.Error()),
 		)
 	}
+
+	cfgView, _ := json.MarshalIndent(cfg, "", "	")
+	logger.Debug("env variables",
+		slog.String("config", string(cfgView)),
+	)
 
 	return cfg
 }
