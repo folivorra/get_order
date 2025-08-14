@@ -1,9 +1,6 @@
 package postgres
 
 const (
-	existsCheckQuery = `
-	SELECT EXISTS (SELECT order_uid FROM orders WHERE order_uid = $1)
-	`
 	deliverySaveQuery = `
 	INSERT INTO deliveries (
 		delivery_uid, name, phone, zip, city, address, region, email

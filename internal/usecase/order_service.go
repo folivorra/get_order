@@ -2,22 +2,15 @@ package usecase
 
 import (
 	"context"
-	"errors"
 	"github.com/folivorra/get_order/internal/config"
 	"github.com/folivorra/get_order/internal/domain"
 	"github.com/google/uuid"
 	"log/slog"
 )
 
-var (
-	ErrOrderAlreadyExists = errors.New("order already exists")
-	ErrOrderDoesNotExists = errors.New("order does not exists")
-)
-
 type OrderRepo interface {
 	Get(ctx context.Context, uid uuid.UUID) (order *domain.Order, err error)
 	Save(ctx context.Context, order *domain.Order) (err error)
-	Exists(ctx context.Context, uuid uuid.UUID) (exists bool, err error)
 }
 
 type OrderCache interface {
@@ -42,15 +35,6 @@ func NewOrderService(logger *slog.Logger, cfg config.Config, repo OrderRepo) *Or
 }
 
 func (s *OrderService) ProcessIncomingOrder(ctx context.Context, order *domain.Order) error {
-	exists, err := s.repo.Exists(ctx, order.OrderUID)
-	if err != nil {
-		return err
-	}
-
-	if exists {
-		return ErrOrderAlreadyExists
-	}
-
 	// need to give uuid for objects before save in repo
 	order.Delivery.DeliveryUID = uuid.New()
 	order.Payment.PaymentUID = uuid.New()
@@ -66,14 +50,6 @@ func (s *OrderService) GetOrder(ctx context.Context, uuid uuid.UUID) (*domain.Or
 	//if err == nil {
 	//	return order, nil
 	//}
-
-	exists, err := s.repo.Exists(ctx, uuid)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, ErrOrderDoesNotExists
-	}
 
 	order, err := s.repo.Get(ctx, uuid)
 	if err != nil {

@@ -9,11 +9,15 @@ import (
 	"github.com/folivorra/get_order/internal/domain"
 	"github.com/folivorra/get_order/internal/usecase"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"time"
 )
 
 var (
 	ErrMaxRetryAttemptsExceeded = errors.New("max retry attempts exceeded")
+	ErrOrderDoesNotExists       = errors.New("order does not exists")
+	ErrOrderAlreadyExists       = errors.New("order already exists")
+	ErrCodeUniqueViolation      = "23505"
 )
 
 type PgOrderRepo struct {
@@ -49,7 +53,9 @@ func (pg *PgOrderRepo) Get(ctx context.Context, uid uuid.UUID) (*domain.Order, e
 			_ = r.Close()
 		}()
 
+		hasRows := false
 		for r.Next() {
+			hasRows = true
 			item := domain.OrderItem{
 				Item: &domain.Item{},
 			}
@@ -116,6 +122,10 @@ func (pg *PgOrderRepo) Get(ctx context.Context, uid uuid.UUID) (*domain.Order, e
 
 		if err = r.Err(); err != nil {
 			return err
+		}
+
+		if !hasRows {
+			return ErrOrderDoesNotExists
 		}
 
 		order = funcOrder
@@ -191,7 +201,7 @@ func (pg *PgOrderRepo) Save(ctx context.Context, order *domain.Order) error {
 			order.OofShard,
 		)
 		if err != nil {
-			return err
+			return checkUnique(err)
 		}
 
 		for _, item := range order.Items {
@@ -230,22 +240,15 @@ func (pg *PgOrderRepo) Save(ctx context.Context, order *domain.Order) error {
 	return err
 }
 
-func (pg *PgOrderRepo) Exists(ctx context.Context, uuid uuid.UUID) (exists bool, err error) {
-	err = retry(ctx, pg.cfg.PgMaxRetries, pg.cfg.PgBackoff, func() error {
-		funcCtx, cancel := context.WithTimeout(ctx, pg.cfg.PgExistsTimeout)
-		defer cancel()
-		return pg.db.QueryRowContext(funcCtx, existsCheckQuery, uuid).Scan(&exists)
-	})
-
-	return exists, err
-}
-
 func retry(ctx context.Context, maxRetries int, backoff time.Duration, fn func() error) error {
 	var err error
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		err = fn()
-		if err == nil || errors.Is(err, sql.ErrNoRows) {
+		if err == nil ||
+			errors.Is(err, sql.ErrNoRows) ||
+			errors.Is(err, ErrOrderDoesNotExists) ||
+			errors.Is(err, ErrOrderAlreadyExists) {
 			return err
 		}
 
@@ -259,4 +262,13 @@ func retry(ctx context.Context, maxRetries int, backoff time.Duration, fn func()
 	}
 
 	return ErrMaxRetryAttemptsExceeded
+}
+
+func checkUnique(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == ErrCodeUniqueViolation {
+		return ErrOrderAlreadyExists
+	}
+
+	return err
 }
