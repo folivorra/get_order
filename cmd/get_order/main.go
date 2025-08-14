@@ -3,12 +3,7 @@ package main
 import (
 	"context"
 	"github.com/brianvoe/gofakeit/v7"
-	"log/slog"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-
+	"github.com/folivorra/get_order/internal/adapter/cache/inmemory"
 	"github.com/folivorra/get_order/internal/adapter/consumer/kafka"
 	"github.com/folivorra/get_order/internal/adapter/controller/rest"
 	"github.com/folivorra/get_order/internal/adapter/middleware"
@@ -17,6 +12,11 @@ import (
 	"github.com/folivorra/get_order/internal/storage"
 	"github.com/folivorra/get_order/internal/usecase"
 	"github.com/gorilla/mux"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 func main() {
@@ -45,13 +45,19 @@ func main() {
 	}()
 	pgRepo := postgres.NewPgOrderRepo(pgClient, cfg)
 
+	// inmemory | cache
+	inMemCache := inmemory.NewInMemOrderCache(logger, cfg.CacheCapacity)
+
 	// service layer
-	service := usecase.NewOrderService(logger, cfg, pgRepo)
+	service := usecase.NewOrderService(logger, cfg, pgRepo, inMemCache)
 
 	// kafka
 	kafkaReader := kafka.NewReader(cfg)
 	kafkaConsumer := kafka.NewConsumer(logger, cfg, kafkaReader, service)
 	go kafkaConsumer.Start(ctx)
+	defer func() {
+		_ = kafkaReader.Close()
+	}()
 
 	// router mux
 	router := mux.NewRouter()
@@ -88,4 +94,5 @@ func main() {
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 	<-shutdown
+	cancel()
 }

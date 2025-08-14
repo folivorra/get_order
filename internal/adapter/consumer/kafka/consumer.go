@@ -47,7 +47,6 @@ func (c *Consumer) Start(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			c.Close()
 			c.logger.Info("consumer stopped",
 				slog.String("addr", c.cfg.KafkaBrokerAddr),
 			)
@@ -56,7 +55,6 @@ func (c *Consumer) Start(ctx context.Context) {
 			msg, err := c.reader.FetchMessage(ctx)
 			if err != nil {
 				if errors.Is(err, context.Canceled) {
-					c.Close()
 					c.logger.Info("consumer stopped",
 						slog.String("addr", c.cfg.KafkaBrokerAddr),
 					)
@@ -108,15 +106,5 @@ func (c *Consumer) Start(ctx context.Context) {
 				)
 			}
 		}
-	}
-}
-
-func (c *Consumer) Close() {
-	if err := c.reader.Close(); err != nil {
-		c.logger.Warn("failed to close kafka reader",
-			slog.String("error", err.Error()),
-		)
-	} else {
-		c.logger.Info("kafka reader has been closed")
 	}
 }
