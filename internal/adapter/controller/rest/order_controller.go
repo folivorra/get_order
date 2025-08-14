@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/folivorra/get_order/internal/adapter/mapper"
 	"github.com/folivorra/get_order/internal/config"
+	"github.com/folivorra/get_order/internal/repository/postgres"
 	"github.com/folivorra/get_order/internal/usecase"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -38,7 +39,7 @@ func (c *Controller) GetOrderToUI(w http.ResponseWriter, r *http.Request) {
 
 	order, err := c.service.GetOrder(r.Context(), uid)
 	if err != nil {
-		if errors.Is(err, usecase.ErrOrderDoesNotExists) {
+		if errors.Is(err, postgres.ErrOrderDoesNotExists) {
 			http.Error(w, err.Error(), http.StatusNotFound)
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -48,6 +49,7 @@ func (c *Controller) GetOrderToUI(w http.ResponseWriter, r *http.Request) {
 
 	orderDTO := mapper.ConvertFromDomain(order)
 
+	w.Header().Set("Content-Type", "application/json")
 	if err = json.NewEncoder(w).Encode(orderDTO); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
