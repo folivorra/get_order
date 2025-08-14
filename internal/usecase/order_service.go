@@ -14,23 +14,23 @@ type OrderRepo interface {
 }
 
 type OrderCache interface {
-	Get(ctx context.Context, uid uuid.UUID) (order *domain.Order, err error)
-	Set(ctx context.Context, order *domain.Order) (err error)
+	Get(uid uuid.UUID) (*domain.Order, error)
+	Set(order *domain.Order)
 }
 
 type OrderService struct {
 	logger *slog.Logger
 	cfg    config.Config
 	repo   OrderRepo
-	//cache  OrderCache
+	cache  OrderCache
 }
 
-func NewOrderService(logger *slog.Logger, cfg config.Config, repo OrderRepo) *OrderService {
+func NewOrderService(logger *slog.Logger, cfg config.Config, repo OrderRepo, cache OrderCache) *OrderService {
 	return &OrderService{
 		logger: logger,
 		cfg:    cfg,
 		repo:   repo,
-		//cache:  cache,
+		cache:  cache,
 	}
 }
 
@@ -46,17 +46,17 @@ func (s *OrderService) ProcessIncomingOrder(ctx context.Context, order *domain.O
 }
 
 func (s *OrderService) GetOrder(ctx context.Context, uuid uuid.UUID) (*domain.Order, error) {
-	//order, err := s.cache.Get(ctx, uuid)
-	//if err == nil {
-	//	return order, nil
-	//}
+	order, err := s.cache.Get(uuid)
+	if err == nil {
+		return order, nil
+	}
 
-	order, err := s.repo.Get(ctx, uuid)
+	order, err = s.repo.Get(ctx, uuid)
 	if err != nil {
 		return nil, err
 	}
 
-	//err = s.cache.Set(ctx, order) // todo mb ignore err
+	s.cache.Set(order)
 
 	return order, err
 }

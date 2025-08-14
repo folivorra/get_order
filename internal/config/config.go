@@ -28,6 +28,7 @@ type Config struct {
 	ServerHTTPReadTimeout       time.Duration `env:"SERVER_HTTP_READ_TIMEOUT" envDefault:"5s"`
 	ServerHTTPWriteTimeout      time.Duration `env:"SERVER_HTTP_WRITE_TIMEOUT" envDefault:"10s"`
 	ServerHTTPIdleTimeout       time.Duration `env:"SERVER_HTTP_IDLE_TIMEOUT" envDefault:"120s"`
+	CacheCapacity               int           `env:"CACHE_CAPACITY" envDefault:"10"`
 }
 
 func NewConfig(logger *slog.Logger) Config {
