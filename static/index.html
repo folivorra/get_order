@@ -64,7 +64,6 @@
             }
             const data = await response.json();
 
-            // Строим таблицу
             let html = "<table><tbody>";
             for (let key in data) {
                 html += `<tr><th>${key}</th><td>${data[key]}</td></tr>`;

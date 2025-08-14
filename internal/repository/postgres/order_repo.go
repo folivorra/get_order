@@ -130,101 +130,104 @@ func (pg *PgOrderRepo) Get(ctx context.Context, uid uuid.UUID) (*domain.Order, e
 	return &order, nil
 }
 
-func (pg *PgOrderRepo) Save(ctx context.Context, order *domain.Order) error { // todo retry
-	ctx, cancel := context.WithTimeout(ctx, pg.cfg.PgSaveTimeout)
-	defer cancel()
+func (pg *PgOrderRepo) Save(ctx context.Context, order *domain.Order) error {
+	err := retry(ctx, pg.cfg.PgMaxRetries, pg.cfg.PgBackoff, func() error {
+		funcCtx, cancel := context.WithTimeout(ctx, pg.cfg.PgSaveTimeout)
+		defer cancel()
 
-	tx, err := pg.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.ExecContext(ctx, deliverySaveQuery,
-		order.Delivery.DeliveryUID,
-		order.Delivery.Name,
-		order.Delivery.Phone,
-		order.Delivery.Zip,
-		order.Delivery.City,
-		order.Delivery.Address,
-		order.Delivery.Region,
-		order.Delivery.Email,
-	)
-	if err != nil {
-		_ = tx.Rollback()
-		return err
-	}
-
-	_, err = tx.ExecContext(ctx, paymentSaveQuery,
-		order.Payment.PaymentUID,
-		order.Payment.Transaction,
-		order.Payment.RequestID,
-		order.Payment.Currency,
-		order.Payment.Provider,
-		order.Payment.Amount,
-		order.Payment.PaymentDT,
-		order.Payment.Bank,
-		order.Payment.DeliveryCost,
-		order.Payment.GoodsTotal,
-		order.Payment.CustomFee,
-	)
-	if err != nil {
-		_ = tx.Rollback()
-		return err
-	}
-
-	_, err = tx.ExecContext(ctx, orderSaveQuery,
-		order.OrderUID,
-		order.TrackNumber,
-		order.Entry,
-		order.Delivery.DeliveryUID,
-		order.Payment.PaymentUID,
-		order.Locale,
-		order.InternalSignature,
-		order.CustomerID,
-		order.DeliveryService,
-		order.ShardKey,
-		order.SmID,
-		order.DateCreated,
-		order.OofShard,
-	)
-	if err != nil {
-		_ = tx.Rollback()
-		return err
-	}
-
-	for _, item := range order.Items {
-		_, err = tx.ExecContext(ctx, itemSaveQuery,
-			item.ItemUID,
-			item.Item.ChrtID,
-			item.Item.TrackNumber,
-			item.Item.RID,
-			item.Item.Name,
-			item.Item.Size,
-			item.Item.NmID,
-			item.Item.Brand,
-			item.Item.Status,
-		)
+		tx, err := pg.db.BeginTx(funcCtx, &sql.TxOptions{Isolation: sql.LevelReadCommitted})
 		if err != nil {
-			_ = tx.Rollback()
 			return err
 		}
 
-		_, err = tx.ExecContext(ctx, itemOrderSaveQuery,
-			item.OrderItemUID,
-			item.OrderUID,
-			item.ItemUID,
-			item.Price,
-			item.Sale,
-			item.TotalPrice,
-			item.Quantity,
+		defer func() {
+			_ = tx.Rollback()
+		}()
+
+		_, err = tx.ExecContext(funcCtx, deliverySaveQuery,
+			order.Delivery.DeliveryUID,
+			order.Delivery.Name,
+			order.Delivery.Phone,
+			order.Delivery.Zip,
+			order.Delivery.City,
+			order.Delivery.Address,
+			order.Delivery.Region,
+			order.Delivery.Email,
 		)
 		if err != nil {
-			_ = tx.Rollback()
 			return err
 		}
-	}
 
-	return tx.Commit()
+		_, err = tx.ExecContext(funcCtx, paymentSaveQuery,
+			order.Payment.PaymentUID,
+			order.Payment.Transaction,
+			order.Payment.RequestID,
+			order.Payment.Currency,
+			order.Payment.Provider,
+			order.Payment.Amount,
+			order.Payment.PaymentDT,
+			order.Payment.Bank,
+			order.Payment.DeliveryCost,
+			order.Payment.GoodsTotal,
+			order.Payment.CustomFee,
+		)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.ExecContext(funcCtx, orderSaveQuery,
+			order.OrderUID,
+			order.TrackNumber,
+			order.Entry,
+			order.Delivery.DeliveryUID,
+			order.Payment.PaymentUID,
+			order.Locale,
+			order.InternalSignature,
+			order.CustomerID,
+			order.DeliveryService,
+			order.ShardKey,
+			order.SmID,
+			order.DateCreated,
+			order.OofShard,
+		)
+		if err != nil {
+			return err
+		}
+
+		for _, item := range order.Items {
+			_, err = tx.ExecContext(funcCtx, itemSaveQuery,
+				item.ItemUID,
+				item.Item.ChrtID,
+				item.Item.TrackNumber,
+				item.Item.RID,
+				item.Item.Name,
+				item.Item.Size,
+				item.Item.NmID,
+				item.Item.Brand,
+				item.Item.Status,
+			)
+			if err != nil {
+				return err
+			}
+
+			_, err = tx.ExecContext(funcCtx, itemOrderSaveQuery,
+				item.OrderItemUID,
+				item.OrderUID,
+				item.ItemUID,
+				item.Price,
+				item.Sale,
+				item.TotalPrice,
+				item.Quantity,
+			)
+			if err != nil {
+				return err
+			}
+		}
+
+		return tx.Commit()
+	})
+
+	return err
 }
 
 func (pg *PgOrderRepo) Exists(ctx context.Context, uuid uuid.UUID) (exists bool, err error) {
@@ -242,10 +245,7 @@ func retry(ctx context.Context, maxRetries int, backoff time.Duration, fn func()
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		err = fn()
-		if err == nil {
-			return nil
-		}
-		if errors.Is(err, sql.ErrNoRows) {
+		if err == nil || errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
 

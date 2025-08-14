@@ -41,9 +41,7 @@ func main() {
 	// postgres | repo
 	pgClient := storage.NewPgClient(ctx, cfg)
 	defer func() {
-		if err := pgClient.Close(); err != nil {
-			logger.Warn("failed to close pgClient")
-		}
+		_ = pgClient.Close()
 	}()
 	pgRepo := postgres.NewPgOrderRepo(pgClient, cfg)
 
