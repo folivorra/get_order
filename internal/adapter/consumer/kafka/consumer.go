@@ -32,10 +32,12 @@ func NewConsumer(logger *slog.Logger, cfg config.Config, reader *kafka.Reader, s
 
 func NewReader(cfg config.Config) *kafka.Reader {
 	return kafka.NewReader(kafka.ReaderConfig{
-		Brokers:     []string{cfg.KafkaBrokerAddr},
-		Topic:       cfg.KafkaGetOrderTopic,
-		GroupID:     cfg.KafkaConsumerGroup,
-		StartOffset: kafka.LastOffset,
+		Brokers:        []string{cfg.KafkaBrokerAddr},
+		Topic:          cfg.KafkaGetOrderTopic,
+		GroupID:        cfg.KafkaConsumerGroup,
+		StartOffset:    kafka.LastOffset,
+		ReadBackoffMin: cfg.KafkaBackoff,
+		MaxWait:        cfg.KafkaMaxWait,
 	})
 }
 
@@ -64,7 +66,7 @@ func (c *Consumer) Start(ctx context.Context) {
 					slog.String("error", err.Error()),
 				)
 				jitter := time.Duration(gofakeit.IntN(500)) * time.Millisecond
-				time.Sleep(c.cfg.KafkaBackoff + jitter)
+				time.Sleep(jitter)
 				continue
 			}
 
