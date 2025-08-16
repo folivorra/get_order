@@ -6,6 +6,7 @@ import (
 	"github.com/folivorra/get_order/internal/domain"
 	"github.com/google/uuid"
 	"log/slog"
+	"sync"
 )
 
 var (
@@ -22,6 +23,7 @@ type InMemOrderCache struct {
 	capacity int
 	nodes    map[string]*list.Element
 	queue    *list.List
+	mu       sync.Mutex
 }
 
 func NewInMemOrderCache(logger *slog.Logger, capacity int) *InMemOrderCache {
@@ -30,13 +32,19 @@ func NewInMemOrderCache(logger *slog.Logger, capacity int) *InMemOrderCache {
 		capacity: capacity,
 		nodes:    make(map[string]*list.Element),
 		queue:    list.New(),
+		mu:       sync.Mutex{},
 	}
 }
 
 func (c *InMemOrderCache) Set(order *domain.Order) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	if element, exists := c.nodes[order.OrderUID.String()]; exists {
+		node := element.Value.(Node)
+		node.Value = *order
 		c.queue.MoveToFront(element)
-		element.Value = *order
+
 		c.logger.Debug("item exists and moved to front",
 			slog.String("key", order.OrderUID.String()),
 		)
@@ -45,7 +53,7 @@ func (c *InMemOrderCache) Set(order *domain.Order) {
 
 	if c.queue.Len() >= c.capacity {
 		if element := c.queue.Back(); element != nil {
-			item := c.queue.Remove(element).(*Node)
+			item := c.queue.Remove(element).(Node)
 			delete(c.nodes, item.Key)
 			c.logger.Debug("item removed from cache",
 				slog.String("key", item.Key),
@@ -53,7 +61,7 @@ func (c *InMemOrderCache) Set(order *domain.Order) {
 		}
 	}
 
-	item := &Node{
+	item := Node{
 		Key:   order.OrderUID.String(),
 		Value: *order,
 	}
@@ -66,6 +74,9 @@ func (c *InMemOrderCache) Set(order *domain.Order) {
 }
 
 func (c *InMemOrderCache) Get(uid uuid.UUID) (*domain.Order, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	element, exists := c.nodes[uid.String()]
 	if !exists {
 		c.logger.Debug("item does not exist",
@@ -73,10 +84,14 @@ func (c *InMemOrderCache) Get(uid uuid.UUID) (*domain.Order, error) {
 		)
 		return nil, ErrKeyNotFound
 	}
+
 	c.queue.MoveToFront(element)
 	c.logger.Debug("item moved to front",
 		slog.String("key", uid.String()),
 	)
-	node := element.Value.(*Node)
-	return &node.Value, nil
+	node := element.Value.(Node)
+
+	orderCopy := node.Value
+
+	return &orderCopy, nil
 }
