@@ -31,8 +31,8 @@ func main() {
 	}()
 
 	wg := sync.WaitGroup{}
-	wg.Add(5)
-	for i := 0; i < 5; i++ {
+	wg.Add(30)
+	for i := 0; i < 30; i++ {
 		go func() {
 			defer wg.Done()
 			order := mapper.OrderIntoDomainDTO{
@@ -61,6 +61,36 @@ func main() {
 					CustomFee:    gofakeit.Number(1, 100),
 				},
 				Items: []mapper.ItemIntoDomainDTO{
+					{
+						ItemUID:     uuid.New(),
+						ChrtID:      gofakeit.Number(1, 100),
+						TrackNumber: uuid.New().String(),
+						Price:       gofakeit.Number(1, 100),
+						Rid:         uuid.New().String(),
+						Name:        gofakeit.ProductName(),
+						Sale:        gofakeit.Number(1, 100),
+						Size:        gofakeit.DigitN(2),
+						TotalPrice:  gofakeit.Number(1, 100),
+						NmID:        gofakeit.Number(1, 100),
+						Brand:       gofakeit.Company(),
+						Status:      gofakeit.HTTPStatusCode(),
+						Quantity:    gofakeit.Number(1, 4),
+					},
+					{
+						ItemUID:     uuid.New(),
+						ChrtID:      gofakeit.Number(1, 100),
+						TrackNumber: uuid.New().String(),
+						Price:       gofakeit.Number(1, 100),
+						Rid:         uuid.New().String(),
+						Name:        gofakeit.ProductName(),
+						Sale:        gofakeit.Number(1, 100),
+						Size:        gofakeit.DigitN(2),
+						TotalPrice:  gofakeit.Number(1, 100),
+						NmID:        gofakeit.Number(1, 100),
+						Brand:       gofakeit.Company(),
+						Status:      gofakeit.HTTPStatusCode(),
+						Quantity:    gofakeit.Number(1, 4),
+					},
 					{
 						ItemUID:     uuid.New(),
 						ChrtID:      gofakeit.Number(1, 100),

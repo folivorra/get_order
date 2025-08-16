@@ -12,6 +12,7 @@ type Config struct {
 	KafkaGetOrderTopic          string        `env:"KAFKA_GET_ORDER_TOPIC" envDefault:"get_orders"`
 	KafkaConsumerGroup          string        `env:"KAFKA_CONSUMER_GROUP" envDefault:"default"`
 	KafkaBackoff                time.Duration `env:"KAFKA_BACKOFF" envDefault:"500ms"`
+	KafkaMaxWait                time.Duration `env:"KAFKA_MAX_WAIT" envDefault:"500ms"`
 	PgDsn                       string        `env:"PG_DSN" envDefault:"postgres://app:app@postgres:5432/?sslmode=disable"`
 	PgSaveTimeout               time.Duration `env:"PG_SAVE_TIMEOUT" envDefault:"5s"`
 	PgExistsTimeout             time.Duration `env:"PG_EXISTS_TIMEOUT" envDefault:"2s"`
@@ -29,6 +30,7 @@ type Config struct {
 	ServerHTTPWriteTimeout      time.Duration `env:"SERVER_HTTP_WRITE_TIMEOUT" envDefault:"10s"`
 	ServerHTTPIdleTimeout       time.Duration `env:"SERVER_HTTP_IDLE_TIMEOUT" envDefault:"120s"`
 	CacheCapacity               int           `env:"CACHE_CAPACITY" envDefault:"10"`
+	CacheWarmUpSize             int           `env:"CACHE_WARM_SIZE" envDefault:"5"`
 }
 
 func NewConfig(logger *slog.Logger) Config {
