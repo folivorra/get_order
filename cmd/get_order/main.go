@@ -51,6 +51,13 @@ func main() {
 	// service layer
 	service := usecase.NewOrderService(logger, cfg, pgRepo, inMemCache)
 
+	// warmup cache
+	if err := service.WarmUpCache(ctx, cfg.CacheWarmUpSize); err != nil {
+		logger.Warn("fail to warm up cache",
+			slog.String("err", err.Error()),
+		)
+	}
+
 	// kafka
 	kafkaReader := kafka.NewReader(cfg)
 	kafkaConsumer := kafka.NewConsumer(logger, cfg, kafkaReader, service)

@@ -10,6 +10,7 @@ import (
 	"github.com/folivorra/get_order/internal/usecase"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
+	"sort"
 	"time"
 )
 
@@ -40,10 +41,8 @@ func (pg *PgOrderRepo) Get(ctx context.Context, uid uuid.UUID) (*domain.Order, e
 	err := retry(ctx, pg.cfg.PgMaxRetries, pg.cfg.PgBackoff, func() error {
 		funcCtx, cancel := context.WithTimeout(ctx, pg.cfg.PgGetTimeout)
 		defer cancel()
-		funcOrder := domain.Order{
-			Delivery: domain.Delivery{},
-			Payment:  domain.Payment{},
-		}
+
+		var funcOrder domain.Order
 
 		r, err := pg.db.QueryContext(funcCtx, orderGetQuery, uid)
 		if err != nil {
@@ -238,6 +237,117 @@ func (pg *PgOrderRepo) Save(ctx context.Context, order *domain.Order) error {
 	})
 
 	return err
+}
+
+func (pg *PgOrderRepo) GetLastN(ctx context.Context, n int) ([]*domain.Order, error) {
+	var orders []*domain.Order
+
+	err := retry(ctx, pg.cfg.PgMaxRetries, pg.cfg.PgBackoff, func() error {
+		funcCtx, cancel := context.WithTimeout(ctx, pg.cfg.PgSaveTimeout*time.Duration(n))
+		defer cancel()
+
+		r, err := pg.db.QueryContext(funcCtx, orderGetLastNQuery, n)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+
+		uniqueOrders := make(map[uuid.UUID]*domain.Order)
+
+		for r.Next() {
+			var order domain.Order
+			item := domain.OrderItem{
+				Item: &domain.Item{},
+			}
+
+			if err = r.Scan(
+				&order.OrderUID,
+				&order.TrackNumber,
+				&order.Entry,
+				&order.Delivery.DeliveryUID,
+				&order.Payment.PaymentUID,
+				&order.Locale,
+				&order.InternalSignature,
+				&order.CustomerID,
+				&order.DeliveryService,
+				&order.ShardKey,
+				&order.SmID,
+				&order.DateCreated,
+				&order.OofShard,
+
+				&order.Delivery.DeliveryUID,
+				&order.Delivery.Name,
+				&order.Delivery.Phone,
+				&order.Delivery.Zip,
+				&order.Delivery.City,
+				&order.Delivery.Address,
+				&order.Delivery.Region,
+				&order.Delivery.Email,
+
+				&order.Payment.PaymentUID,
+				&order.Payment.Transaction,
+				&order.Payment.RequestID,
+				&order.Payment.Currency,
+				&order.Payment.Provider,
+				&order.Payment.Amount,
+				&order.Payment.PaymentDT,
+				&order.Payment.Bank,
+				&order.Payment.DeliveryCost,
+				&order.Payment.GoodsTotal,
+				&order.Payment.CustomFee,
+
+				&item.OrderItemUID,
+				&item.OrderUID,
+				&item.ItemUID,
+				&item.Price,
+				&item.Sale,
+				&item.TotalPrice,
+				&item.Quantity,
+
+				&item.Item.ItemUID,
+				&item.Item.ChrtID,
+				&item.Item.TrackNumber,
+				&item.Item.RID,
+				&item.Item.Name,
+				&item.Item.Size,
+				&item.Item.NmID,
+				&item.Item.Brand,
+				&item.Item.Status,
+			); err != nil {
+				return err
+			}
+
+			if _, ok := uniqueOrders[order.OrderUID]; !ok {
+				uniqueOrders[order.OrderUID] = &order
+			}
+
+			uniqueOrders[order.OrderUID].Items = append(uniqueOrders[order.OrderUID].Items, item)
+		}
+
+		funcOrders := make([]*domain.Order, 0, len(uniqueOrders))
+		for _, funcOrder := range uniqueOrders {
+			funcOrders = append(funcOrders, funcOrder)
+		}
+
+		// чтобы кэш заполнялся соответствуя времени создания заказа
+		sort.Slice(funcOrders, func(i, j int) bool {
+			t1, _ := time.Parse(time.RFC3339, funcOrders[i].DateCreated)
+			t2, _ := time.Parse(time.RFC3339, funcOrders[j].DateCreated)
+			return t1.Before(t2)
+		})
+
+		orders = funcOrders
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return orders, nil
 }
 
 func retry(ctx context.Context, maxRetries int, backoff time.Duration, fn func() error) error {

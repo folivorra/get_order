@@ -11,6 +11,7 @@ import (
 type OrderRepo interface {
 	Get(ctx context.Context, uid uuid.UUID) (order *domain.Order, err error)
 	Save(ctx context.Context, order *domain.Order) (err error)
+	GetLastN(ctx context.Context, n int) (orders []*domain.Order, err error)
 }
 
 type OrderCache interface {
@@ -59,4 +60,17 @@ func (s *OrderService) GetOrder(ctx context.Context, uuid uuid.UUID) (*domain.Or
 	s.cache.Set(order)
 
 	return order, err
+}
+
+func (s *OrderService) WarmUpCache(ctx context.Context, warmUpSize int) error {
+	orders, err := s.repo.GetLastN(ctx, warmUpSize)
+	if err != nil {
+		return err
+	}
+
+	for _, order := range orders {
+		s.cache.Set(order)
+	}
+
+	return nil
 }

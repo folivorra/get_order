@@ -46,4 +46,19 @@ const (
 	JOIN items i ON oi.item_uid = i.item_uid
 	WHERE o.order_uid = $1;
 	`
+	orderGetLastNQuery = `
+	WITH latest_orders AS (
+		SELECT o.*
+		FROM orders o
+		ORDER BY o.date_created DESC
+		LIMIT $1
+	)
+
+	SELECT *
+	FROM latest_orders o
+	JOIN deliveries d ON d.delivery_uid = o.delivery_uid
+	JOIN payments p   ON p.payment_uid = o.payment_uid
+	JOIN order_item oi ON oi.order_uid = o.order_uid
+	JOIN items i       ON oi.item_uid = i.item_uid
+	`
 )
