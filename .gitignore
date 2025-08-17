@@ -34,3 +34,4 @@ go.work.sum
 lefthook.yml
 .golangci.yaml
 pkg/bin
+data.json

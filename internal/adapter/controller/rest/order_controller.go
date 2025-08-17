@@ -56,5 +56,5 @@ func (c *Controller) GetOrderToUI(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Controller) RegisterRoutes(r *mux.Router) {
-	r.HandleFunc("/orders/{uid}", c.GetOrderToUI).Methods("GET")
+	r.HandleFunc("/order/{uid}", c.GetOrderToUI).Methods("GET")
 }

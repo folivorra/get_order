@@ -24,13 +24,13 @@ func NewServer(server *http.Server, cfg config.Config, logger *slog.Logger) *Ser
 
 func (s *Server) Run() error {
 	s.logger.Info("server started",
-		slog.String("addr", s.server.Addr),
+		slog.String("port", s.server.Addr),
 	)
-	
+
 	err := s.server.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
 		s.logger.Warn("server panic",
-			slog.String("addr", s.server.Addr),
+			slog.String("port", s.server.Addr),
 			slog.String("error", err.Error()),
 		)
 		return err
@@ -46,12 +46,12 @@ func (s *Server) Stop(ctx context.Context) {
 	err := s.server.Shutdown(ctx)
 	if err != nil {
 		s.logger.Warn("failed to shutdown server",
-			slog.String("addr", s.server.Addr),
+			slog.String("port", s.server.Addr),
 			slog.String("error", err.Error()),
 		)
 	}
 
 	s.logger.Info("server has been stopped",
-		slog.String("addr", s.server.Addr),
+		slog.String("port", s.server.Addr),
 	)
 }

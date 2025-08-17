@@ -91,7 +91,7 @@ func main() {
 	go func() {
 		if err := server.Run(); err != nil {
 			logger.Error("failed to start server",
-				slog.String("addr", cfg.ServerHTTPPort),
+				slog.String("port", cfg.ServerHTTPPort),
 				slog.String("err", err.Error()),
 			)
 		}
