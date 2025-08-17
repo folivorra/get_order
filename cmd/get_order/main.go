@@ -20,9 +20,11 @@ import (
 )
 
 func main() {
+	// main ctx
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// gofakeit randomize seed
 	_ = gofakeit.Seed(0)
 
 	// logger
@@ -35,7 +37,7 @@ func main() {
 		),
 	)
 
-	// cfg
+	// config
 	cfg := config.NewConfig(logger)
 
 	// postgres | repo
@@ -70,6 +72,10 @@ func main() {
 	router := mux.NewRouter()
 	router.Use(middleware.LoggingMiddleware(logger))
 
+	// html ui
+	fs := http.FileServer(http.Dir("/templates"))
+	router.PathPrefix("/templates/").Handler(http.StripPrefix("/templates/", fs))
+
 	// http | controller
 	controller := rest.NewController(service, cfg, logger)
 	controller.RegisterRoutes(router)
@@ -98,6 +104,7 @@ func main() {
 	}()
 	defer server.Stop(ctx)
 
+	// graceful shutdown
 	shutdown := make(chan os.Signal, 1)
 	signal.Notify(shutdown, syscall.SIGINT, syscall.SIGTERM)
 	<-shutdown

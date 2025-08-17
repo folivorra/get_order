@@ -58,15 +58,25 @@
         }
 
         try {
-            const response = await fetch(`/api/order?uid=${encodeURIComponent(uid)}`);
+            const response = await fetch(`/order/${encodeURIComponent(uid)}`);
             if (!response.ok) {
                 throw new Error(`Ошибка ${response.status}`);
             }
+
             const data = await response.json();
 
             let html = "<table><tbody>";
             for (let key in data) {
-                html += `<tr><th>${key}</th><td>${data[key]}</td></tr>`;
+                let value = data[key];
+
+                if (typeof value === 'object' && value !== null) {
+                    html += `<tr><th colspan="2">${key}</th></tr>`;
+                    for (let subKey in value) {
+                        html += `<tr><th>${subKey}</th><td>${JSON.stringify(value[subKey])}</td></tr>`;
+                    }
+                } else {
+                    html += `<tr><th>${key}</th><td>${value}</td></tr>`;
+                }
             }
             html += "</tbody></table>";
 
