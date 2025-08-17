@@ -41,8 +41,11 @@ func (c *InMemOrderCache) Set(order *domain.Order) {
 	defer c.mu.Unlock()
 
 	if element, exists := c.nodes[order.OrderUID.String()]; exists {
-		node := element.Value.(Node)
-		node.Value = *order
+		node := Node{
+			Key:   order.OrderUID.String(),
+			Value: *order,
+		}
+		element.Value = node
 		c.queue.MoveToFront(element)
 
 		c.logger.Debug("item exists and moved to front",
