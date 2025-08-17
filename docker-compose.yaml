@@ -11,6 +11,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_started
+    volumes:
+      - ./templates:/templates
     networks:
       - my-network
 
