@@ -76,6 +76,16 @@ func (c *Consumer) Start(ctx context.Context) {
 				c.logger.Error("failed to unmarshal message",
 					slog.String("error", err.Error()),
 				)
+				c.commit(ctx, msg)
+				continue
+			}
+
+			if err = usecase.ValidateOrder(&orderDTO); err != nil {
+				c.logger.Error("failed to validate order",
+					slog.String("error", err.Error()),
+				)
+				c.commit(ctx, msg)
+				continue
 			}
 
 			order := mapper.ConvertToDomain(&orderDTO)
@@ -102,11 +112,15 @@ func (c *Consumer) Start(ctx context.Context) {
 				)
 			}
 
-			if err = c.reader.CommitMessages(ctx, msg); err != nil {
-				c.logger.Error("failed to commit message",
-					slog.String("error", err.Error()),
-				)
-			}
+			c.commit(ctx, msg)
 		}
+	}
+}
+
+func (c *Consumer) commit(ctx context.Context, msg kafka.Message) {
+	if err := c.reader.CommitMessages(ctx, msg); err != nil {
+		c.logger.Error("failed to commit message",
+			slog.String("error", err.Error()),
+		)
 	}
 }
