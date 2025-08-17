@@ -25,16 +25,5 @@ func NewPgClient(ctx context.Context, cfg config.Config) *sql.DB {
 		log.Fatal(err)
 	}
 
-	//app.RegisterCleanup(func(ctx context.Context) {
-	//	timeout, cancel := context.WithTimeout(ctx, 500*time.Millisecond)
-	//	defer cancel()
-	//
-	//	if err := db.PingContext(timeout); err != nil {
-	//		logger.ErrorLogger.Println("postgres connection error: %v", err)
-	//	} else if err := db.Close(); err != nil {
-	//		logger.ErrorLogger.Println("postgres close error: %v", err)
-	//	}
-	//}) todo
-
 	return db
 }
