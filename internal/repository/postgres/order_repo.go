@@ -4,14 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"sort"
+	"time"
+
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/folivorra/get_order/internal/config"
 	"github.com/folivorra/get_order/internal/domain"
 	"github.com/folivorra/get_order/internal/usecase"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
-	"sort"
-	"time"
 )
 
 var (
@@ -329,6 +330,10 @@ func (pg *PgOrderRepo) GetLastN(ctx context.Context, n int) ([]*domain.Order, er
 		funcOrders := make([]*domain.Order, 0, len(uniqueOrders))
 		for _, funcOrder := range uniqueOrders {
 			funcOrders = append(funcOrders, funcOrder)
+		}
+
+		if len(funcOrders) == 0 {
+			return ErrOrderDoesNotExists
 		}
 
 		// чтобы кэш заполнялся соответствуя времени создания заказа
