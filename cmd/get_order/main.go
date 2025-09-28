@@ -2,6 +2,12 @@ package main
 
 import (
 	"context"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/brianvoe/gofakeit/v7"
 	"github.com/folivorra/get_order/internal/adapter/cache/inmemory"
 	"github.com/folivorra/get_order/internal/adapter/consumer/kafka"
@@ -12,11 +18,6 @@ import (
 	"github.com/folivorra/get_order/internal/storage"
 	"github.com/folivorra/get_order/internal/usecase"
 	"github.com/gorilla/mux"
-	"log/slog"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func main() {
@@ -102,7 +103,7 @@ func main() {
 			)
 		}
 	}()
-	defer server.Stop(ctx)
+	defer server.Stop()
 
 	// graceful shutdown
 	shutdown := make(chan os.Signal, 1)

@@ -3,9 +3,10 @@ package rest
 import (
 	"context"
 	"errors"
-	"github.com/folivorra/get_order/internal/config"
 	"log/slog"
 	"net/http"
+
+	"github.com/folivorra/get_order/internal/config"
 )
 
 type Server struct {
@@ -39,11 +40,11 @@ func (s *Server) Run() error {
 	return nil
 }
 
-func (s *Server) Stop(ctx context.Context) {
-	ctx, cancel := context.WithTimeout(ctx, s.cfg.ServerHTTPShutdownTimeout)
+func (s *Server) Stop() {
+	timeout, cancel := context.WithTimeout(context.Background(), s.cfg.ServerHTTPShutdownTimeout)
 	defer cancel()
 
-	err := s.server.Shutdown(ctx)
+	err := s.server.Shutdown(timeout)
 	if err != nil {
 		s.logger.Warn("failed to shutdown server",
 			slog.String("port", s.server.Addr),
